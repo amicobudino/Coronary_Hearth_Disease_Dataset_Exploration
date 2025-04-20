@@ -1,0 +1,515 @@
+---
+title: "Assignment 01"
+date: "2025-04-01"
+author: "Alvise Celeste Cova - 257560"
+format:
+  pdf:
+    latex-engine: miktex
+---
+
+<!-- # The CHD data set exploration homework
+
+The data for this homework are available at chd.csv. The data come from a cardiovascular study conducted in the US, investigating the possible risk factors associated to the development of coronary heart disease (CHD) within 10 years. The possible risk factors, that are available in the data, are the patients’ sex (sex), age (age), education level (education, coded as 1: no high school degree, 2: high school graduate, 3: college graduate, 4: post-college), current smoking status (smoker), number of cigarettes per day (cpd, continuous), previous occurrence of strokes (stroke) or hypertension (HTN), presence of diabetes (diabetes), cholesterol levels (chol, continuous), diastolic blood pressure (DBP, continuous), body mass index (BMI, continuous), and heart rate (HR, continuous). The variable CHD records whether the patient developed CHD in the next 10 years or not. -->
+
+## 1. Explore the data:
+- what is the nature of the response variable (CHD)? 
+- Are there potential issues with any of the predictors? 
+- Can you find some useful visualization of the discriminative power of each predictor? 
+- Do you need pre-processing or can you proceed with the data set as it is?
+
+
+```{r, echo=FALSE, include = FALSE}
+# set working directory
+print(getwd())
+
+# data path
+my_data <- "~/Documents/uni/magistraleQCB/semestre2/Vinciotti-Regression_Classification_Models/homeworks/01-CHD/chd.csv"
+
+# Load the data
+data <- read.csv(my_data, header = TRUE)
+
+# Check the structure of the data
+str(data)
+
+# Summary statistics for CHD
+table(data$CHD)
+#summary(data$CHD)
+
+# Visualize the distribution of CHD
+barplot(table(data$CHD), main = "Distribution of CHD")
+
+```
+
+### 1.1 what is the nature of the response variable (CHD)? 
+
+```{r}
+# Load the data
+data <- read.csv(my_data, header = TRUE)
+# Summary statistics for CHD
+table(data$CHD)
+```
+
+From the command `table(data$CHD)` we can see that the variable `CHD` is a **binary categorical** with two levels: `No` and `Yes`, with 3594 samples of `No` and 644 samples of `Yes`. 
+
+### 1.2 Are there potential issues with any of the predictors?
+
+Yes some predictors are categorical and some are continuous. The **categorical** predictors are `sex`, `education`, `smoker`, `stroke`, `HTN`, and `diabetes`. The **continuous** predictors are `age`, `cpd`, `chol`, `DBP`, `BMI`, and `HR`.
+
+Some potential issues might be: 
+- Categorical predictors need to be converted to factors. 
+- There might be missing values in either the predicots or the response variable.
+- The response variable (`CHD`) might be inbalanced. Meaning that one class is more frequent than the other.
+- The continuous predictors might need to be scaled or normalized.
+
+
+#### 1.2.1 conveting categorical variables to factors
+```{r}
+categorical_vars <- c('sex', 'education', 'smoker', 'stroke', 'HTN', 'diabetes', 'CHD')
+non_categorical_vars <- c('age', 'cpd', 'chol', 'DBP', 'BMI', 'HR')
+for (var in categorical_vars) {
+   # if (!is.factor(data[[var]])) 
+   {
+        data[[var]] <- as.factor(data[[var]])
+    }
+}
+```
+This code converts the categorical variables to factors. This is important because some functions in R require categorical variables to be factors in order to work properly.
+#### 1.2.2 check for NAs
+
+```{r}
+# Check for missing values
+missing_values <- sapply(data, function(x) sum(is.na(x)))
+# number of missing values
+counter = 0
+for (i in missing_values) {
+    if (i > 0) {
+        counter = counter + i
+    }
+}
+counter
+
+# percentage of missing values
+missing_values_percentage <- counter / nrow(data) * 100
+missing_values_percentage
+```
+
+To handle missing values we can either remove the rows with missing values or replace tehm with the median. 
+As we have 4238  samples and about 204 misisng values, we can remove the rows with missing values as they are less than 5% of the data.
+
+```{r}
+# Remove rows with missing values
+data <- na.omit(data)
+# Check the structure of the data again
+str(data)
+```
+
+This also answer the question of whether we need pre-processing or not.
+
+### 1.3 can you find some useful visualization of the discriminative power of each predictor?
+
+To visualize how well each predicotr can separate the two classes of the response variable, we can use different types of plots.
+
+- Plot boxplots or density plots for continuous predictors grouped by CHD.
+- Plot the correlation of each predictor with the response variable in a barplot.
+
+#### 1.3.1 Boxplots for continuous predictors
+
+```{r}
+predicotrs <- c('age', 'cpd', 'chol', 'DBP', 'BMI', 'HR')
+response <- 'CHD'
+
+# Create a function to plot boxplots for all continuous predictors
+plot_boxplots <- function(data, predictors, response) {
+    par(mfrow = c(2, 3))  # Arrange plots in a 2x3 grid
+    for (predictor in predictors) {
+        boxplot(data[[predictor]] ~ data[[response]], 
+                main = paste("Boxplot of", predictor, "by", response), 
+                xlab = response, 
+                ylab = predictor)
+    }
+    par(mfrow = c(1, 1))  # Reset layout to default
+}
+
+# Call the function to plot all boxplots
+plot_boxplots(data, predicotrs, response)
+```
+
+From the boxplots we can see that the continuous predictor `age` is able to separate the two classes of the response variable, while the other continuous predictors do not seem to separate the two classes well.
+
+#### 1.3.2 compute correlation matrix for continuous predictors
+
+```{r}
+library(dplyr)
+chd_numeric <- data %>% mutate(across(where(is.factor), as.numeric))
+cor_matrix <-cor(chd_numeric)
+cor_chd <- cor_matrix[, "CHD"]
+barplot(cor_chd, main="Correlation between all variables and CHD", las = 2)
+
+# save the plot
+png("~/Documents/uni/magistraleQCB/semestre2/Vinciotti-Regression_Classification_Models/homeworks/01-CHD/images/correlation_plot.png")
+barplot(cor_chd, main="Correlation between all variables and CHD", las = 2)
+dev.off()
+
+```
+
+Computing the correlation of all the variables allows us to observe the discriminating power of the continuous variables. 
+In this step we are chengin all the categorical variables to numeric, as the correlation is computed only for numeric variables with the function `cor()`.
+We compute the correlation matrix and then we extract the correlation of all the variables with the response variable `CHD`.
+
+This method forces us to introduce numeric variables for our categories. This is a problem because the numeric values are not meaningful as they are not related to the categories. *Thus the computed correlations miht be misleading in sign and also in magnitude.* 
+
+## 2. Split the data into training and test sets
+
+Split the data into (reproducible) training and test sets. 
+Given the class imbalance, you could aim for sets that have the same imbalance with respect to the outcome variable. 
+In order to do this, you could either perform the splitting manually on each class, or use dedicated functions -> (for example, caret::createDataPartition(labels, p=train_size), with train_size a number between 0 and 1 representing the percentage of data you would like to use for training.
+
+```{r, echo=FALSE, include = FALSE}
+# install caret package if not already installed
+if (!requireNamespace("caret", quietly = TRUE)) {
+    install.packages("caret")
+}
+#  load the caret package
+library(caret)
+```
+```{r}
+set.seed(123)  # for reproducibility
+train_indices <- createDataPartition(data$CHD, p = 0.7, list = FALSE)
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
+# check the dimensions of the training and test sets
+dim(train_data)
+dim(test_data)
+```
+
+##### notes on the code: 
+
+This code splits the data into training and test sets using the `caret` package.
+- `set.seed(123)`: Sets the seed for random number generation to ensure reproducibility of the results. This means that every time you run the code, you will get the same split of the data.
+
+## 3. Fit a GLM (general linear model)
+
+$$
+\text{logit}(E(\text{CHD})) = \beta_0 + \beta_1(\text{sex}) + \beta_2(\text{age}) + \beta_3(\text{education}) + \ldots + \beta_{12}(\text{HR})
+$$
+
+### 3.1 GLM implementation
+
+```{r}
+# get the names of the columns
+print(colnames(data))
+
+# create the model
+glm.fits <- glm(CHD ~ age + sex + education + smoker + cpd + stroke + HTN + diabetes + chol + DBP + BMI + HR,
+    data = train_data,
+    family = binomial
+)
+
+# summary of the model
+summary(glm.fits)
+
+# compute the odds ratio 
+odds_ratio <- exp(coef(glm.fits))
+odds_ratio
+```
+
+### 3.2  Discuss the summary and the interpretation of the regression coefficients in the context of the study.
+
+The summary of the model provides us with the coefficients for each predictor, their standard errors, z-values, and p-values.
+
+The regression coefficints represents the change in the log odds of the outcome (`CHD`) for a one unit increase in the corresponding predictor variable, holding all other predictors constant.
+
+A positive coefficient means an increase in the predictor and is associated with an increase in the log odds of the outcome, while a negative coefficient means a decrease in the predictor and is associated with a decrease in the log odds of the outcome.
+
+Alternatively we can interpret the coefficients as **odds ratios** by taking the exponent of the coefficients. The odds ratio represents how much the odds of the response variable $\text{CHD}=1$ changes when the predictor variable $X_i$​ increases by 1 unit.
+
+#### 3.2.1 Interpretation of the significant and non significant coefficients in the contest of the study:
+
+**1. Intercept**
+
+- The intercept $\beta_0$ in our model has a odds ratio value of 0.0004 and has a p-value $p < 2e^{-16}$ meaning that it is highly significant.
+
+- We could interpret the intercept as the odds ratio of developing CHD when all the predictors are 0. But the meaning of this value (of the intercept) is not very *interpretable* in the context of this study, as for example the age of 0 is not a meaningful value.
+
+**2. age**
+
+- The odds ratio for the variable `age` is 1.0725 and is highly significant with a pvalue of $p < 2e^{-16}$. 
+- This means that the age of the patient is *positively associated* with the development of CHD. For each additional year of age, the response variable `CHD` increases by $\approx 7.25%$.
+
+**3. Sex(Male)**
+
+- odds ratio $\sim 1.574$
+- p value $= 0.00024$
+- Interpretation: Males have about 1.5737 times the odds of developing CHD compared to females, this indicates a statistically significant inscea
+
+**3. Education (Level 2/3/4)**
+- odds ratio $\sim 0.906, 0.956, 1.038$
+- p values are not significant in all cases ($p> 0.05$)
+- Interpretation: Education level is a categorical variable with 4 levels, and the odds ratios are not significantly different from education level 1. This means that the education level does not seem to have a significant effect on the development of CHD.
+
+**Cholesterol level**
+
+- odds ratio $\sim 1.0013$
+- p value $= 0.31$ 
+- Interpretation: Cholesterol level is not significantly associated with the development of CHD.
+
+**Diastolic Blood Pressure**
+
+- odds ratio $\sim 1.0169$
+- p value $= 0.0031$
+- Interpretation: Diastolic blood pressure is positively associated with the development of CHD. For each additional mmHg of diastolic blood pressure, the odds of developing CHD increase by $\approx 1.69\%$.
+
+Other significant variables are `cpd`(cigarettes per day), `HTN1`(hypertension), `diabetes1`(diabetes). While the remaining variables are not significant in the prediction of the response variable `CHD`. See table below for the summary of the model.
+
+| Predictor | Coefficient | Odds Ratio | p-value |
+|-----------|-------------|------------|---------|
+
+## 4. Fit a k-nn classifier, by performing a careful selection of the tuning parameter k. 
+
+```{r}
+# install the class package if not already installed
+if (!requireNamespace("class", quietly = TRUE)) {
+    install.packages("class")
+}
+library(class)
+library(dplyr)
+
+# significative non categorical variables
+ sign_non_categorical_vars <- c('age', 'cpd', 'DBP')
+
+# select only non categorical variables
+train_data_nc <- train_data[ sign_non_categorical_vars ]
+test_data_nc <- test_data[ sign_non_categorical_vars ]
+# check the structure of the data
+str(train_data_nc)
+str(test_data_nc)
+
+# Define a range of odd k values
+k_values <- seq(1, 20, by = 1)  # odd values of k
+accuracy <- numeric(length(k_values))
+error_rate <- numeric(length(k_values))
+
+# Scale the non categorical training data
+train_data_nc_scaled <- as.data.frame(scale(train_data_nc))
+
+# Extract the scaling parameters from the training set
+train_means <- attr(scale(train_data_nc), "scaled:center")
+train_sds   <- attr(scale(train_data_nc), "scaled:scale")
+
+# Scale the test data using the training set parameters
+test_data_nc_scaled <- as.data.frame(scale(test_data_nc, center = train_means, scale = train_sds))
+
+# loop over the defined k values to compute test set accuracy for each (in the case of normalized data)
+
+for (i in seq_along(k_values)) {
+    k <- k_values[i]
+    # k-NN prediction, excluding the CHD column from the predictors
+    knn_pred <- knn(
+        train_data_nc_scaled,
+        test_data_nc_scaled,
+        train_data$CHD,
+        k = k
+    )
+    accuracy[i] <- mean(knn_pred == test_data$CHD)
+    error_rate[i] <- mean(knn_pred != test_data$CHD)
+}
+print('this is the accuracy:')
+accuracy
+print('this is the error rate:')
+error_rate
+
+# # Alternatively, we can use the non normalized data
+
+# # Loop over the defined k values to compute test set accuracy for each
+# for (i in seq_along(k_values)) {
+#     k <- k_values[i]
+#     # k-NN prediction, excluding the CHD column from the predictors
+#     knn_pred <- knn(
+#         train_data_nc,
+#         test_data_nc,
+#         train_data$CHD,
+#         k = k
+#     )
+#     # fill in the accuracy
+#     accuracy[i] <- mean(knn_pred == test_data$CHD)
+#     # fill in the error rate
+#     error_rate[i] <- mean(knn_pred != test_data$CHD)
+# }
+# print('this is the accuracy:')
+# accuracy
+# print('this is the error rate:')
+# error_rate
+
+# Plot the accuracy vs k value
+plot(k_values, accuracy, type = "b", pch = 19, col = "blue",
+     xlab = "k value", ylab = "Accuracy",
+     main = "k-NN Classifier Accuracy vs k value")
+
+# save the plot
+png("~/Documents/uni/magistraleQCB/semestre2/Vinciotti-Regression_Classification_Models/homeworks/01-CHD/images/knn_accuracy.png")
+plot(k_values, accuracy, type = "b", pch = 19, col = "blue",
+     xlab = "k value", ylab = "Accuracy",
+     main = "k-NN Classifier Accuracy vs k value")
+dev.off()
+
+# Plot the error rate vs k value
+plot(k_values, error_rate, type = "b", pch = 19, col = "red",
+     xlab = "k value", ylab = "Error Rate",
+     main = "k-NN Classifier Error Rate vs k value")
+# save the plot
+png("~/Documents/uni/magistraleQCB/semestre2/Vinciotti-Regression_Classification_Models/homeworks/01-CHD/images/knn_error_rate.png")
+plot(k_values, error_rate, type = "b", pch = 19, col = "red",
+     xlab = "k value", ylab = "Error Rate",
+     main = "k-NN Classifier Error Rate vs k value")
+dev.off()
+
+# Select the best k value based on highest accuracy or lowest error rate
+# best_k <- k_values[which.min(error_rate)]
+best_k <- k_values[which.max(accuracy)]
+best_k
+
+# test the accuracy of the best k value
+
+knn_pred_best <- knn(
+    train_data_nc,
+    test_data_nc,
+    train_data$CHD,
+    k = best_k
+)
+# Compute accuracy for the best k value
+accuracy_best_k <- mean(knn_pred_best == test_data$CHD)
+```
+
+From the accuracy and the error rate plots we can see that the best k value is `best_k`, as it gives the highest accuracy (and the lowest error rate).
+
+## Evaluate the performance of the two methods.
+
+we compute the accuriacy of the two methods via computing the confusion matrix and the accuracy.
+
+### GLM
+```{r}
+# Predict the probabilities of the test set using the GLM model
+glm_probs <- predict(glm.fits, newdata = test_data, type = "response")
+
+# Convert probabilities to binary predictions using a threshold of 0.5
+glm_pred <- ifelse(glm_probs > 0.5, "Yes", "No")
+
+# Create a confusion matrix
+confusion_matrix_glm <- table(test_data$CHD, glm_pred)
+confusion_matrix_glm
+
+# Compute accuracy
+accuracy_glm <- sum(diag(confusion_matrix_glm)) / sum(confusion_matrix_glm)
+accuracy_glm
+```
+
+table of the confusion matrix for GLM
+| Actual/Predicted | No  | Yes |
+|------------------|-----|-----|
+| No               |  1025  |  4  |
+| Yes              |  175  |  6  |
+|-----------------|-----|-----|
+| 
+
+## K-NN
+```{r}
+# Predict the classes of the test set using the k-NN model
+knn_pred <- knn(
+    train_data_nc,
+    test_data_nc,
+    train_data$CHD,
+    k = best_k
+)
+# Create a confusion matrix
+confusion_matrix_knn <- table(test_data$CHD, knn_pred)
+confusion_matrix_knn
+# Compute accuracy
+accuracy_knn <- sum(diag(confusion_matrix_knn)) / sum(confusion_matrix_knn)
+accuracy_knn
+```
+
+table of the confusion matrix for k-NN
+| Actual/Predicted | No  | Yes |
+|------------------|-----|-----|
+| No               |  1013  |  16  |
+| Yes              |  169  |  12  |
+|-----------------|-----|-----|
+
+The accuracy of the GLM model is 0.852 and the accuracy of the k-NN model is 0.847. 
+
+| accuracy | GLM | k-NN |
+|----------|-----|------|
+|          |0.852| 0.847|
+|----------|-----|------|
+
+
+
+
+
+
+<!-- 
+### we can additionally compare the two models using the **ROC curve** and the AUC (area under the curve) metric. -->
+
+```{r include=FALSE}
+# install the pROC package if not already installed
+if (!requireNamespace("pROC", quietly = TRUE)) {
+    install.packages("pROC")
+}
+library(pROC)
+
+# Compute the ROC curve for the GLM model
+roc_glm <- roc(test_data$CHD, glm_probs)
+# Plot the ROC curve
+plot(roc_glm, main = "ROC Curve for GLM Model", col = "blue")
+
+# save the plot
+png("~/Documents/uni/magistraleQCB/semestre2/Vinciotti-Regression_Classification_Models/homeworks/01-CHD/images/roc_glm.png")
+plot(roc_glm, main = "ROC Curve for GLM Model", col = "blue")
+dev.off()
+
+# Compute AUC for the GLM model
+auc_glm <- auc(roc_glm)
+auc_glm
+
+# Compute the ROC curve for the k-NN model -- this does not work as 
+# k_NN does not provide probabilities but provides a hard class label
+# and the roc function needs probabilities
+# roc_knn <- roc(test_data$CHD, as.numeric(knn_pred))
+# # Plot the ROC curve
+# plot(roc_knn, main = "ROC Curve for k-NN Model", col = "red")
+
+# # save the plot
+# png("./Vinciotti-Regression_Classification_Models/homeworks/01-CHD/images/roc_knn.png")
+# plot(roc_knn, main = "ROC Curve for k-NN Model", col = "red")
+# dev.off()
+
+# # Compute AUC for the k-NN model
+# auc_knn <- auc(roc_knn)
+# auc_knn
+
+```
+
+As we cannot compute the ROC curve for the k-NN model, as we sould need to transform the categorical variables into continuous variables, we do not use it for the comparison.
+
+## Conclusion: 
+
+In this study, we compared the performance of two classification methods, GLM (logistic regression) and k-NN, to predict the occurrence of CHD based on a set of predictors. The GLM model proved to be more suitable for this analysis due to its ability to provide insights into the significance of individual predictors. Logistic regression allows us to quantify the relationship between predictors and the response variable, offering a clear understanding of the impact of each variable on the likelihood of developing CHD.
+
+The k-NN model does not provide parameter estimates for the predictors. Additionally, its performance is sensitive to the choice of the hyperparameter `k`, and it does not handle imbalanced datasets very well. These limitations make it less suitable for answering the research questions in this context.
+
+### Limitations of the Study
+
+1. **Class Imbalance**: The dataset exhibits class imbalance, which may have affected the performance of both models. While stratified sampling was used during data splitting, further techniques such as oversampling or undersampling could be explored to address this issue.
+
+2. **Scaling and Normalization**: Continuous predictors were not scaled or normalized in this analysis, which may have impacted the performance of the k-NN model, as it is sensitive to the scale of the predictors.
+
+3. **Model Assumptions**: The logistic regression model assumes a linear relationship between the predictors and the log odds of the response variable. If this assumption does not hold, the model's performance may be suboptimal.
+
+### Recommendations
+
+Further analysescan could benefit from adressing the mentioned limitations. 
+For example applying exploring non-linear models, such as decision trees or random forests, could provide additional insights into the relationships between predictors and the response variable.
+Additionally data preprocessing techniques such as scaling and normalization should be applied to continuous predictors to improve the performance of the k-NN model.
+Furthermore we could use resampling techniques to adress class imbalacne, for exmple an easily implemented solution can be achieved by duplicating samples in the minority class or reducing the samples in the majority class.
+
+
