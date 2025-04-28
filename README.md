@@ -1,4 +1,3 @@
 # Coronary_Hearth_Disease_Dataset_Exploration
-investigating the possible risk factors associated to the development of the coronary hearth disease (CHD) 
+In this project I aim at investigating the possible risk factors associated to the development of the coronary hearth disease (CHD) via anzlizing the CHD dataset.
 
-The `copy` file contains all the explanation and reasoning done while producing the final analysis done in `main`, which for clarity reasons does not include all comments. 
