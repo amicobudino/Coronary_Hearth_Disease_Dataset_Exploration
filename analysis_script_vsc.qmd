@@ -1,7 +1,6 @@
 ---
-title: "Assignment 01: Analysis of the Coronary Heart Disease dataset"
-date: "2025-04-01"
-author: "Alvise Celeste Cova - 257560"
+title: "Analysis of the Coronary Heart Disease dataset"
+author: "Alvise Celeste Cova"
 format:
   pdf:
     latex-engine: miktex
@@ -21,7 +20,7 @@ This section explores the *Coronary Heart Disease* dataset and checks for potent
 print(getwd())
 
 # data path
-my_data <- "~/Documents/uni/magistraleQCB/semestre2/Vinciotti-Regression_Classification_Models/homeworks/01-CHD/chd.csv"
+my_data <- "<path_to_file/chd.csv"
 
 # Load the data
 data <- read.csv(my_data, header = TRUE)
